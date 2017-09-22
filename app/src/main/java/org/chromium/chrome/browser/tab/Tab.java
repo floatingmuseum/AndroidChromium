@@ -101,6 +101,8 @@ import org.chromium.content_public.common.BrowserControlsState;
 import org.chromium.content_public.common.BrowserControlsState.BrowserControlsStateEnum;
 import org.chromium.content_public.common.Referrer;
 import org.chromium.content_public.common.ResourceRequestBody;
+import org.chromium.hat.WhiteListManager;
+import org.chromium.hat.utils.ToastUtil;
 import org.chromium.printing.PrintManagerDelegateImpl;
 import org.chromium.printing.PrintingController;
 import org.chromium.printing.PrintingControllerImpl;
@@ -111,6 +113,7 @@ import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.mojom.WindowOpenDisposition;
 
 import java.lang.ref.WeakReference;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -121,19 +124,21 @@ import java.util.List;
  * by this base class.
  * <p>
  * Extending just Java:
- *  - Just extend the class normally.  Do not override initializeNative().
+ * - Just extend the class normally.  Do not override initializeNative().
  * Extending Java and C++:
- *  - Because of the inner-workings of JNI, the subclass is responsible for constructing the native
- *    subclass, which in turn constructs TabAndroid (the native counterpart to Tab), which in
- *    turn sets the native pointer for Tab.  For destruction, subclasses in Java must clear
- *    their own native pointer reference, but Tab#destroy() will handle deleting the native
- *    object.
+ * - Because of the inner-workings of JNI, the subclass is responsible for constructing the native
+ * subclass, which in turn constructs TabAndroid (the native counterpart to Tab), which in
+ * turn sets the native pointer for Tab.  For destruction, subclasses in Java must clear
+ * their own native pointer reference, but Tab#destroy() will handle deleting the native
+ * object.
  */
 public class Tab implements ViewGroup.OnHierarchyChangeListener,
         View.OnSystemUiVisibilityChangeListener {
     public static final int INVALID_TAB_ID = -1;
 
-    /** Return value from {@link #getBookmarkId()} if this tab is not bookmarked. */
+    /**
+     * Return value from {@link #getBookmarkId()} if this tab is not bookmarked.
+     */
     public static final long INVALID_BOOKMARK_ID = -1;
 
     private static final long INVALID_TIMESTAMP = -1;
@@ -144,20 +149,28 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      */
     private static final int CONSIDERED_READY_LOAD_PERCENTAGE = 100;
 
-    /** Used for logging. */
+    /**
+     * Used for logging.
+     */
     private static final String TAG = "Tab";
 
     private static final String PRODUCT_VERSION = ChromeVersionInfo.getProductVersion();
 
     private long mNativeTabAndroid;
 
-    /** Unique id of this tab (within its container). */
+    /**
+     * Unique id of this tab (within its container).
+     */
     private final int mId;
 
-    /** Whether or not this tab is an incognito tab. */
+    /**
+     * Whether or not this tab is an incognito tab.
+     */
     private final boolean mIncognito;
 
-    /** Whether or not this tab is running in blimp mode. */
+    /**
+     * Whether or not this tab is running in blimp mode.
+     */
     private boolean mBlimp;
 
     /**
@@ -166,34 +179,54 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      */
     private final Context mThemedApplicationContext;
 
-    /** Gives {@link Tab} a way to interact with the Android window. */
+    /**
+     * Gives {@link Tab} a way to interact with the Android window.
+     */
     private WindowAndroid mWindowAndroid;
 
-    /** Whether or not this {@link Tab} is initialized and should be interacted with. */
+    /**
+     * Whether or not this {@link Tab} is initialized and should be interacted with.
+     */
     private boolean mIsInitialized;
 
-    /** The current native page (e.g. chrome-native://newtab), or {@code null} if there is none. */
+    /**
+     * The current native page (e.g. chrome-native://newtab), or {@code null} if there is none.
+     */
     private NativePage mNativePage;
 
-    /** InfoBar container to show InfoBars for this tab. */
+    /**
+     * InfoBar container to show InfoBars for this tab.
+     */
     private InfoBarContainer mInfoBarContainer;
 
-    /** Controls overscroll pull-to-refresh behavior for this tab. */
+    /**
+     * Controls overscroll pull-to-refresh behavior for this tab.
+     */
     private SwipeRefreshHandler mSwipeRefreshHandler;
 
-    /** The sync id of the Tab if session sync is enabled. */
+    /**
+     * The sync id of the Tab if session sync is enabled.
+     */
     private int mSyncId;
 
-    /** {@link ContentViewCore} showing the current page, or {@code null} if the tab is frozen. */
+    /**
+     * {@link ContentViewCore} showing the current page, or {@code null} if the tab is frozen.
+     */
     private ContentViewCore mContentViewCore;
 
-    /** Listens to gesture events fired by the ContentViewCore. */
+    /**
+     * Listens to gesture events fired by the ContentViewCore.
+     */
     private GestureStateListener mGestureStateListener;
 
-    /** The parent view of the ContentView and the InfoBarContainer. */
+    /**
+     * The parent view of the ContentView and the InfoBarContainer.
+     */
     private TabContentViewParent mContentViewParent;
 
-    /** A list of Tab observers.  These are used to broadcast Tab events to listeners. */
+    /**
+     * A list of Tab observers.  These are used to broadcast Tab events to listeners.
+     */
     private final ObserverList<TabObserver> mObservers = new ObserverList<>();
 
     // Content layer Observers and Delegates
@@ -235,7 +268,9 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      */
     private int mIdealFaviconSize;
 
-    /** Whether or not the TabState has changed. */
+    /**
+     * Whether or not the TabState has changed.
+     */
     private boolean mIsTabStateDirty = true;
 
     /**
@@ -305,7 +340,9 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      */
     private boolean mIsHidden = true;
 
-    /** Whether the renderer is currently unresponsive. */
+    /**
+     * Whether the renderer is currently unresponsive.
+     */
     private boolean mIsRendererUnresponsive;
 
     /**
@@ -370,7 +407,9 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     private ChromeDownloadDelegate mDownloadDelegate;
 
-    /** Whether or not the tab closing the tab can send the user back to the app that opened it. */
+    /**
+     * Whether or not the tab closing the tab can send the user back to the app that opened it.
+     */
     private boolean mIsAllowedToReturnToExternalApp;
 
     private class TabContentViewClient extends ContentViewClient {
@@ -388,7 +427,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
         @Override
         public void onBottomControlsChanged(float bottomControlsOffsetY,
-                float bottomContentOffsetY) {
+                                            float bottomContentOffsetY) {
             super.onBottomControlsChanged(bottomControlsOffsetY, bottomContentOffsetY);
             onOffsetsChanged(mPreviousTopControlsOffsetY, bottomControlsOffsetY,
                     mPreviousContentOffsetY, isShowingSadTab());
@@ -520,7 +559,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Creates an instance of a {@link Tab}.
-     *
+     * <p>
      * This constructor may be called before the native library has been loaded, so any additions
      * must be vetted for library calls.
      *
@@ -534,23 +573,24 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Creates an instance of a {@link Tab}.
-     *
+     * <p>
      * This constructor can be called before the native library has been loaded, so any additions
      * must be vetted for library calls.
      *
-     * @param id          The id this tab should be identified with.
-     * @param parentId    The id id of the tab that caused this tab to be opened.
-     * @param incognito   Whether or not this tab is incognito.
-     * @param context     An instance of a {@link Context}.
-     * @param window      An instance of a {@link WindowAndroid}.
+     * @param id            The id this tab should be identified with.
+     * @param parentId      The id id of the tab that caused this tab to be opened.
+     * @param incognito     Whether or not this tab is incognito.
+     * @param context       An instance of a {@link Context}.
+     * @param window        An instance of a {@link WindowAndroid}.
      * @param creationState State in which the tab is created, needed to initialize TabUma
      *                      accounting. When null, TabUma will not be initialized.
-     * @param frozenState State containing information about this Tab, if it was persisted.
+     * @param frozenState   State containing information about this Tab, if it was persisted.
      */
     @SuppressLint("HandlerLeak")
     public Tab(int id, int parentId, boolean incognito, Context context,
-            WindowAndroid window, TabLaunchType type, TabCreationState creationState,
-            TabState frozenState) {
+               WindowAndroid window, TabLaunchType type, TabCreationState creationState,
+               TabState frozenState) {
+        Log.d("HAT测试", "加载NewTab:Tab构造方法");
         mId = TabIdManager.getInstance().generateValidId(id);
         mParentId = parentId;
         mIncognito = incognito;
@@ -602,6 +642,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Restores member fields from the given TabState.
+     *
      * @param state TabState containing information about this Tab.
      */
     private void restoreFieldsFromState(TabState state) {
@@ -618,11 +659,12 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
         mTitle = state.getDisplayTitleFromState();
         mIsTitleDirectionRtl = mTitle != null
                 && LocalizationUtils.getFirstStrongCharacterDirection(mTitle)
-                        == LocalizationUtils.RIGHT_TO_LEFT;
+                == LocalizationUtils.RIGHT_TO_LEFT;
     }
 
     /**
      * Adds a {@link TabObserver} to be notified on {@link Tab} changes.
+     *
      * @param observer The {@link TabObserver} to add.
      */
     public void addObserver(TabObserver observer) {
@@ -631,6 +673,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Removes a {@link TabObserver}.
+     *
      * @param observer The {@link TabObserver} to remove.
      */
     public void removeObserver(TabObserver observer) {
@@ -705,13 +748,47 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Causes this tab to navigate to the specified URL.
+     *
      * @param params parameters describing the url load. Note that it is important to set correct
      *               page transition as it is used for ranking URLs in the history so the omnibox
      *               can report suggestions correctly.
      * @return FULL_PRERENDERED_PAGE_LOAD or PARTIAL_PRERENDERED_PAGE_LOAD if the page has been
-     *         prerendered. DEFAULT_PAGE_LOAD if it had not.
+     * prerendered. DEFAULT_PAGE_LOAD if it had not.
      */
     public int loadUrl(LoadUrlParams params) {
+//        chrome-native://newtab/
+        Log.d("HAT测试", "加载URL...getBaseUrl:" + params.getBaseUrl());
+        Log.d("HAT测试", "加载URL...getDataUrlAsString:" + params.getDataUrlAsString());
+        Log.d("HAT测试", "加载URL...getExtraHeadersString:" + params.getExtraHeadersString());
+        Log.d("HAT测试", "加载URL...getExtraHeaders:" + params.getExtraHeaders());
+        Log.d("HAT测试", "加载URL...getExtraHttpRequestHeadersString:" + params.getExtraHttpRequestHeadersString());
+        Log.d("HAT测试", "加载URL...getUrl:" + params.getUrl());
+        Log.d("HAT测试", "加载URL...getVerbatimHeaders:" + params.getVerbatimHeaders());
+        Log.d("HAT测试", "加载URL...getVirtualUrlForDataUrl:" + params.getVirtualUrlForDataUrl());
+        Log.d("HAT测试", "加载URL...getCanLoadLocalResources:" + params.getCanLoadLocalResources());
+        Log.d("HAT测试", "加载URL...getHasUserGesture:" + params.getHasUserGesture());
+        Log.d("HAT测试", "加载URL...getIntentReceivedTimestamp:" + params.getIntentReceivedTimestamp());
+        Log.d("HAT测试", "加载URL...getIsRendererInitiated:" + params.getIsRendererInitiated());
+        Log.d("HAT测试", "加载URL...getLoadUrlType:" + params.getLoadUrlType());
+        Log.d("HAT测试", "加载URL...getPostData:" + params.getPostData());
+        Log.d("HAT测试", "加载URL...getReferrer:" + params.getReferrer());
+        Log.d("HAT测试", "加载URL...getShouldReplaceCurrentEntry:" + params.getShouldReplaceCurrentEntry());
+        Log.d("HAT测试", "加载URL...getTransitionType:" + params.getTransitionType());
+        Log.d("HAT测试", "加载URL...getUserAgentOverrideOption:" + params.getUserAgentOverrideOption());
+        Log.d("HAT测试", "加载URL...isBaseUrlDataScheme:" + params.isBaseUrlDataScheme());
+//        try {
+//            Log.d("HAT测试", "加载URL...域名Domain:" + domain);
+//        } catch (URISyntaxException e) {
+//            e.printStackTrace();
+//        }
+
+
+        Log.d("HAT测试", "加载URL...**************************************************************** 分割线 *********************************************");
+
+//        if (WhiteListManager.getInstance().checkUrl(params.getUrl())) {
+//
+//        }
+
         try {
             TraceEvent.begin("Tab.loadUrl");
             // TODO(tedchoc): When showing the android NTP, delay the call to nativeLoadUrl until
@@ -752,6 +829,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Called when the contextual ActionBar is shown or hidden.
+     *
      * @param show {@code true} when the ActionBar is shown; {@code false} otherwise.
      */
     public void notifyContextualActionBarVisibilityChanged(boolean show) {
@@ -769,7 +847,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return Whether or not the {@link Tab} is currently showing an interstitial page, such as
-     *         a bad HTTPS page.
+     * a bad HTTPS page.
      */
     public boolean isShowingInterstitialPage() {
         return getWebContents() != null && getWebContents().isShowingInterstitialPage();
@@ -801,7 +879,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return The {@link View} displaying the current page in the tab. This can be {@code null}, if
-     *         the tab is frozen or being initialized or destroyed.
+     * the tab is frozen or being initialized or destroyed.
      */
     public TabContentViewParent getView() {
         return mContentViewParent;
@@ -832,7 +910,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return {@link ChromeActivity} that currently contains this {@link Tab} in its
-     *         {@link TabModel}.
+     * {@link TabModel}.
      */
     ChromeActivity getActivity() {
         if (getWindowAndroid() == null) return null;
@@ -844,7 +922,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return {@link TabModelSelector} that currently hosts the {@link TabModel} for this
-     *         {@link Tab}.
+     * {@link Tab}.
      */
     public TabModelSelector getTabModelSelector() {
         if (getActivity() == null) return null;
@@ -858,7 +936,9 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
         return mInfoBarContainer;
     }
 
-    /** @return An opaque "state" object that can be persisted to storage. */
+    /**
+     * @return An opaque "state" object that can be persisted to storage.
+     */
     public TabState getState() {
         if (!isInitialized()) return null;
         TabState tabState = new TabState();
@@ -872,12 +952,16 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
         return tabState;
     }
 
-    /** @return WebContentsState representing the state of the WebContents (navigations, etc.) */
+    /**
+     * @return WebContentsState representing the state of the WebContents (navigations, etc.)
+     */
     public WebContentsState getFrozenContentsState() {
         return mFrozenContentsState;
     }
 
-    /** Returns an object representing the state of the Tab's WebContents. */
+    /**
+     * Returns an object representing the state of the Tab's WebContents.
+     */
     private TabState.WebContentsState getWebContentsState() {
         if (mFrozenContentsState != null) return mFrozenContentsState;
 
@@ -890,7 +974,9 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
         return state;
     }
 
-    /** Returns an ByteBuffer representing the state of the Tab's WebContents. */
+    /**
+     * Returns an ByteBuffer representing the state of the Tab's WebContents.
+     */
     private ByteBuffer getWebContentsStateAsByteBuffer() {
         if (mPendingLoadParams == null) {
             return TabState.getContentsStateAsByteBuffer(this);
@@ -970,7 +1056,9 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
         return isReady() && getProgress() >= CONSIDERED_READY_LOAD_PERCENTAGE;
     }
 
-    /** Stop the current navigation. */
+    /**
+     * Stop the current navigation.
+     */
     public void stopLoading() {
         if (isLoading()) {
             RewindableIterator<TabObserver> observers = getTabObservers();
@@ -987,7 +1075,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
         if (mBlimp) {
             return mBlimpContentsObserver != null ? mBlimpContentsObserver.getMostRecentProgress()
-                                                  : 0;
+                    : 0;
         } else {
             TabWebContentsDelegateAndroid delegate = getTabWebContentsDelegateAndroid();
             return delegate != null ? delegate.getMostRecentProgress() : 0;
@@ -1005,7 +1093,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return The current theme color based on the value passed from the web contents and the
-     *         security state.
+     * security state.
      */
     public int getThemeColor() {
         return mThemeColor;
@@ -1013,6 +1101,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Calculate the theme color based on if the page is native, the theme color changed, etc.
+     *
      * @param didWebContentsThemeColorChange If the theme color of the web contents is known to have
      *                                       changed.
      * @return The theme color that should be used for this tab.
@@ -1058,6 +1147,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Determines if the theme color has changed and notifies the listeners if it has.
+     *
      * @param didWebContentsThemeColorChange If the theme color of the web contents is known to have
      *                                       changed.
      */
@@ -1102,8 +1192,9 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * For more information about the uniqueness of {@link #getId()} see comments on {@link Tab}.
-     * @see Tab
+     *
      * @return The id representing this tab.
+     * @see Tab
      */
     @CalledByNative
     public int getId() {
@@ -1128,7 +1219,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return The {@link ContentViewCore} associated with the current page, or {@code null} if
-     *         there is no current page or the current page is displayed using a native view.
+     * there is no current page or the current page is displayed using a native view.
      */
     public ContentViewCore getContentViewCore() {
         return mNativePage == null ? mContentViewCore : null;
@@ -1136,8 +1227,8 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return The {@link NativePage} associated with the current page, or {@code null} if there is
-     *         no current page or the current page is displayed using something besides
-     *         {@link NativePage}.
+     * no current page or the current page is displayed using something besides
+     * {@link NativePage}.
      */
     public NativePage getNativePage() {
         return mNativePage;
@@ -1153,6 +1244,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     /**
      * Set whether or not the {@link ContentViewCore} should be using a desktop user agent for the
      * currently loaded page.
+     *
      * @param useDesktop     If {@code true}, use a desktop user agent.  Otherwise use a mobile one.
      * @param reloadOnChange Reload the page if the user agent has changed.
      */
@@ -1197,9 +1289,9 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return An {@link ObserverList.RewindableIterator} instance that points to all of
-     *         the current {@link TabObserver}s on this class.  Note that calling
-     *         {@link java.util.Iterator#remove()} will throw an
-     *         {@link UnsupportedOperationException}.
+     * the current {@link TabObserver}s on this class.  Note that calling
+     * {@link java.util.Iterator#remove()} will throw an
+     * {@link UnsupportedOperationException}.
      */
     public ObserverList.RewindableIterator<TabObserver> getTabObservers() {
         return mObservers.rewindableIterator();
@@ -1265,6 +1357,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      * Prepares the tab to be shown. This method is supposed to be called before the tab is
      * displayed. It restores the ContentView if it is not available after the cold start and
      * reloads the tab if its renderer has crashed.
+     *
      * @param type Specifies how the tab was selected.
      */
     public final void show(TabSelectionType type) {
@@ -1341,6 +1434,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Shows the given {@code nativePage} if it's not already showing.
+     *
      * @param nativePage The {@link NativePage} to show.
      */
     private void showNativePage(NativePage nativePage) {
@@ -1382,6 +1476,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     /**
      * Initializes {@link Tab} with {@code webContents}.  If {@code webContents} is {@code null} a
      * new {@link WebContents} will be created for this {@link Tab}.
+     *
      * @param webContents       A {@link WebContents} object or {@code null} if one should be
      *                          created.
      * @param tabContentManager A {@link TabContentManager} instance or {@code null} if the web
@@ -1394,7 +1489,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      *                          the initialization.
      */
     public final void initialize(WebContents webContents, TabContentManager tabContentManager,
-            TabDelegateFactory delegateFactory, boolean initiallyHidden, boolean unfreeze) {
+                                 TabDelegateFactory delegateFactory, boolean initiallyHidden, boolean unfreeze) {
         try {
             TraceEvent.begin("Tab.initialize");
 
@@ -1407,9 +1502,9 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
                     mDelegateFactory.createBrowserControlsVisibilityDelegate(this);
 
             mBlimp = BlimpClientContextFactory
-                             .getBlimpClientContextForProfile(
-                                     Profile.getLastUsedProfile().getOriginalProfile())
-                             .isBlimpEnabled()
+                    .getBlimpClientContextForProfile(
+                            Profile.getLastUsedProfile().getOriginalProfile())
+                    .isBlimpEnabled()
                     && !mIncognito;
 
             // Attach the TabContentManager if we have one.  This will bind this Tab's content layer
@@ -1473,17 +1568,17 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      * Begins the tab reparenting process. Detaches the tab from its current activity and fires
      * an Intent to reparent the tab into its new host activity.
      *
-     * @param intent An optional intent with the desired component, flags, or extras to use when
-     *               launching the new host activity. This intent's URI and action will be
-     *               overriden. This may be null if no intent customization is needed.
+     * @param intent               An optional intent with the desired component, flags, or extras to use when
+     *                             launching the new host activity. This intent's URI and action will be
+     *                             overriden. This may be null if no intent customization is needed.
      * @param startActivityOptions Options to pass to {@link Activity#startActivity(Intent, Bundle)}
-     * @param finalizeCallback A callback that will be called after the tab is attached to the new
-     *                         host activity in {@link #attachAndFinishReparenting}.
+     * @param finalizeCallback     A callback that will be called after the tab is attached to the new
+     *                             host activity in {@link #attachAndFinishReparenting}.
      * @return Whether reparenting succeeded. If false, the tab was not removed and the intent was
-     *         not fired.
+     * not fired.
      */
     public boolean detachAndStartReparenting(Intent intent, Bundle startActivityOptions,
-            Runnable finalizeCallback) {
+                                             Runnable finalizeCallback) {
         ChromeActivity activity = getActivity();
         if (activity == null) return false;
 
@@ -1527,12 +1622,12 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      * tab and related objects to reference the new activity. This updates many delegates inside the
      * tab and {@link ContentViewCore} both on java and native sides.
      *
-     * @param activity The new activity this tab should be associated with.
+     * @param activity           The new activity this tab should be associated with.
      * @param tabDelegateFactory The new delegate factory this tab should be using.
      * @Param reparentingParams The TabReparentingParams associated with this reparenting process.
      */
     public void attachAndFinishReparenting(ChromeActivity activity,
-            TabDelegateFactory tabDelegateFactory, TabReparentingParams reparentingParams) {
+                                           TabDelegateFactory tabDelegateFactory, TabReparentingParams reparentingParams) {
         // TODO(yusufo): Share these calls with the construction related calls.
         // crbug.com/590281
 
@@ -1569,6 +1664,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Update and propagate the new WindowAndroid.
+     *
      * @param windowAndroid The WindowAndroid to propagate.
      */
     public void updateWindowAndroid(WindowAndroid windowAndroid) {
@@ -1582,7 +1678,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      * @return Whether the tab is detached from its Activity and {@link WindowAndroid} for
      * reparenting. Certain functionalities will not work until it is attached to a new activity
      * with {@link Tab#attachAndFinishReparenting(
-     * ChromeActivity, TabDelegateFactory, TabReparentingParams)}.
+     *ChromeActivity, TabDelegateFactory, TabReparentingParams)}.
      */
     public boolean isDetachedForReparenting() {
         return mIsDetachedForReparenting;
@@ -1590,6 +1686,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Attach the content layer for this tab to the given {@link TabContentManager}.
+     *
      * @param tabContentManager {@link TabContentManager} to attach to.
      */
     public void attachTabContentManager(TabContentManager tabContentManager) {
@@ -1617,10 +1714,13 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Called when a navigation begins and no navigation was in progress
+     *
      * @param toDifferentDocument Whether this navigation will transition between
-     * documents (i.e., not a fragment navigation or JS History API call).
+     *                            documents (i.e., not a fragment navigation or JS History API call).
      */
     protected void onLoadStarted(boolean toDifferentDocument) {
+        Log.d("HAT测试", "加载URL...onLoadStarted..." + toDifferentDocument);
+
         if (toDifferentDocument) mIsLoading = true;
         for (TabObserver observer : mObservers) observer.onLoadStarted(this, toDifferentDocument);
     }
@@ -1629,18 +1729,33 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      * Called when a navigation completes and no other navigation is in progress.
      */
     protected void onLoadStopped() {
+        Log.d("HAT测试", "加载URL...onLoadStopped");
         // mIsLoading should only be false if this is a same-document navigation.
         boolean toDifferentDocument = mIsLoading;
         mIsLoading = false;
         for (TabObserver observer : mObservers) observer.onLoadStopped(this, toDifferentDocument);
     }
 
+    int num = 0;
+
     /**
      * Called when a page has started loading.
-     * @param validatedUrl URL being loaded.
+     *
+     * @param validatedUrl     URL being loaded.
      * @param showingErrorPage Whether an error page is being shown.
      */
     protected void didStartPageLoad(String validatedUrl, boolean showingErrorPage) {
+        Log.d("HAT测试", "加载URL...didStartPageLoad:" + validatedUrl);
+
+        // TODO: 2017/9/22 这里似乎是一个完美的拦截地点
+        Log.d("HAT测试", "加载URL...didStartPageLoad...制造崩溃前num：" + num + "..." + (num / 3)+"...URL:"+mUrl+"..."+ getUrl());
+        if (num/3 == 1) {
+            Log.d("HAT测试", "加载URL...didStartPageLoad...制造崩溃");
+//            showSadTab();//无效
+//            hide();//无效
+            stopLoading();
+            return;
+        }
         updateTitle();
         removeSadTabIfPresent();
 
@@ -1655,6 +1770,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      * Called when a page has finished loading.
      */
     protected void didFinishPageLoad() {
+        Log.d("HAT测试", "加载URL...didFinishPageLoad");
         mIsBeingRestored = false;
         mIsTabStateDirty = true;
         updateTitle();
@@ -1671,9 +1787,11 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Called when a page has failed loading.
+     *
      * @param errorCode The error code causing the page to fail loading.
      */
     protected void didFailPageLoad(int errorCode) {
+        Log.d("HAT测试", "加载URL...didFailPageLoad");
         mIsBeingRestored = false;
         if (mTabUma != null) mTabUma.onLoadFailed(errorCode);
         for (TabObserver observer : mObservers) observer.onPageLoadFailed(this, errorCode);
@@ -1683,7 +1801,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      * Builds the native counterpart to this class.  Meant to be overridden by subclasses to build
      * subclass native counterparts instead.  Subclasses should not call this via super and instead
      * rely on the native class to create the JNI association.
-     *
+     * <p>
      * TODO(dfalcantara): Make this function harder to access.
      */
     public void initializeNative() {
@@ -1719,7 +1837,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      * Completes the {@link ContentViewCore} specific initialization around a native WebContents
      * pointer. {@link #getNativePage()} will still return the {@link NativePage} if there is one.
      * All initialization that needs to reoccur after a web contents swap should be added here.
-     * <p />
+     * <p/>
      * NOTE: If you attempt to pass a native WebContents that does not have the same incognito
      * state as this tab this call will fail.
      *
@@ -1774,7 +1892,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
             if (mInfoBarContainer == null) {
                 // The InfoBarContainer needs to be created after the ContentView has been natively
                 // initialized.
-                mInfoBarContainer =  new InfoBarContainer(
+                mInfoBarContainer = new InfoBarContainer(
                         mThemedApplicationContext, getId(), mContentViewParent, this);
             } else {
                 mInfoBarContainer.onParentViewChanged(getId(), mContentViewParent);
@@ -1805,7 +1923,8 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Shows a native page for url if it's a valid chrome-native URL. Otherwise, does nothing.
-     * @param url The url of the current navigation.
+     *
+     * @param url         The url of the current navigation.
      * @param forceReload If true, the current native page (if any) will not be reused, even if it
      *                    matches the URL.
      * @return True, if a native page was displayed for url.
@@ -1829,8 +1948,9 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Notify observers when provisional load starts.
-     * @param isMainFrame    Whether the load is happening for the main frame.
-     * @param validatedUrl   The validated URL that is being navigated to.
+     *
+     * @param isMainFrame  Whether the load is happening for the main frame.
+     * @param validatedUrl The validated URL that is being navigated to.
      */
     void handleDidStartProvisionalLoadForFrame(boolean isMainFrame, String validatedUrl) {
         RewindableIterator<TabObserver> observers = getTabObservers();
@@ -1841,7 +1961,8 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Update internal Tab state when provisional load gets committed.
-     * @param url The URL that was loaded.
+     *
+     * @param url            The URL that was loaded.
      * @param transitionType The transition type to the current URL.
      */
     void handleDidCommitProvisonalLoadForFrame(String url, int transitionType) {
@@ -1968,7 +2089,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return Whether or not this Tab has a live native component.  This will be true prior to
-     *         {@link #initializeNative()} being called or after {@link #destroy()}.
+     * {@link #initializeNative()} being called or after {@link #destroy()}.
      */
     public boolean isInitialized() {
         return mIsInitialized;
@@ -2021,12 +2142,13 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Cache the title for the current page.
-     *
+     * <p>
      * {@link ContentViewClient#onUpdateTitle} is unreliable, particularly for navigating backwards
      * and forwards in the history stack, so pull the correct title whenever the page changes.
      * onUpdateTitle is only called when the title of a navigation entry changes. When the user goes
      * back a page the navigation entry exists with the correct title, thus the title is not
      * actually changed, and no notification is sent.
+     *
      * @param title Title of the page.
      */
     private void updateTitle(String title) {
@@ -2048,6 +2170,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Notify the observers that the load progress has changed.
+     *
      * @param progress The current percentage of progress.
      */
     protected void notifyLoadProgress(int progress) {
@@ -2070,7 +2193,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return The bitmap of the favicon scaled to 16x16dp. null if no favicon
-     *         is specified or it requires the default favicon.
+     * is specified or it requires the default favicon.
      */
     public Bitmap getFavicon() {
         // If we have no content or a native page, return null.
@@ -2088,6 +2211,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      * Loads the tab if it's not loaded (e.g. because it was killed in background).
      * This will trigger a regular load for tabs with pending lazy first load (tabs opened in
      * background on low-memory devices).
+     *
      * @return true iff the Tab handled the request.
      */
     @CalledByNative
@@ -2156,6 +2280,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     /**
      * Restores the WebContents from its saved state.  This should only be called if the tab is
      * frozen with a saved TabState, and NOT if it was frozen for a lazy load.
+     *
      * @return Whether or not the restoration was successful.
      */
     protected boolean unfreezeContents() {
@@ -2279,6 +2404,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Called when the background color for the content changes.
+     *
      * @param color The current for the background.
      */
     protected void onBackgroundColorChanged(int color) {
@@ -2287,6 +2413,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Destroys the current {@link ContentViewCore}.
+     *
      * @param deleteNativeWebContents Whether or not to delete the native WebContents pointer.
      */
     private final void destroyContentViewCore(boolean deleteNativeWebContents) {
@@ -2360,6 +2487,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
         for (TabObserver observer : mObservers) observer.onFaviconUpdated(this, icon);
     }
+
     /**
      * Called when the navigation entry containing the history item changed,
      * for example because of a scroll offset or form field change.
@@ -2386,7 +2514,9 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
         return mNativeTabAndroid;
     }
 
-    /** This is currently called when committing a pre-rendered page. */
+    /**
+     * This is currently called when committing a pre-rendered page.
+     */
     @VisibleForTesting
     @CalledByNative
     public void swapWebContents(
@@ -2398,17 +2528,17 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     /**
      * Called to swap out the current view with the one passed in.
      *
-     * @param newContentViewCore The content view that should be swapped into the tab.
+     * @param newContentViewCore         The content view that should be swapped into the tab.
      * @param deleteOldNativeWebContents Whether to delete the native web
-     *         contents of old view.
-     * @param didStartLoad Whether
-     *         WebContentsObserver::DidStartProvisionalLoadForFrame() has
-     *         already been called.
-     * @param didFinishLoad Whether WebContentsObserver::DidFinishLoad() has
-     *         already been called.
+     *                                   contents of old view.
+     * @param didStartLoad               Whether
+     *                                   WebContentsObserver::DidStartProvisionalLoadForFrame() has
+     *                                   already been called.
+     * @param didFinishLoad              Whether WebContentsObserver::DidFinishLoad() has
+     *                                   already been called.
      */
     public void swapContentViewCore(ContentViewCore newContentViewCore,
-            boolean deleteOldNativeWebContents, boolean didStartLoad, boolean didFinishLoad) {
+                                    boolean deleteOldNativeWebContents, boolean didStartLoad, boolean didFinishLoad) {
         int originalWidth = 0;
         int originalHeight = 0;
         if (mContentViewCore != null) {
@@ -2477,6 +2607,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Set whether the TabState representing this Tab has been updated.
+     *
      * @param isDirty Whether the Tab's state has changed.
      */
     public void setIsTabStateDirty(boolean isDirty) {
@@ -2492,6 +2623,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * Sets whether the Tab should be preserved in Android's Recents list when users hit "back".
+     *
      * @param preserve Whether the tab should be preserved.
      */
     public void setShouldPreserve(boolean preserve) {
@@ -2500,7 +2632,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return Whether there are pending {@link LoadUrlParams} associated with the tab.  This
-     *         indicates the tab was created for lazy load.
+     * indicates the tab was created for lazy load.
      */
     public boolean hasPendingLoadParams() {
         return mPendingLoadParams != null;
@@ -2522,11 +2654,10 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     }
 
     /**
+     * @return The id of the application associated with that tab (null if not
+     * associated with an app).
      * @see #setAppAssociatedWith(String) for more information.
      * TODO(aurimas): investigate reducing the visibility of this method after TabModel refactoring.
-     *
-     * @return The id of the application associated with that tab (null if not
-     *         associated with an app).
      */
     public String getAppAssociatedWith() {
         return mAppAssociatedWith;
@@ -2589,10 +2720,11 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     /**
      * Called when offset values related with fullscreen functionality has been changed by the
      * compositor.
-     * @param topControlsOffsetY The Y offset of the top controls in physical pixels.
+     *
+     * @param topControlsOffsetY    The Y offset of the top controls in physical pixels.
      * @param bottomControlsOffsetY The Y offset of the bottom controls in physical pixels.
-     * @param contentOffsetY The Y offset of the content in physical pixels.
-     * @param isNonFullscreenPage Whether a current page is non-fullscreen page or not.
+     * @param contentOffsetY        The Y offset of the content in physical pixels.
+     * @param isNonFullscreenPage   Whether a current page is non-fullscreen page or not.
      */
     private void onOffsetsChanged(
             float topControlsOffsetY, float bottomControlsOffsetY, float contentOffsetY,
@@ -2633,10 +2765,10 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      *
      * @param constraints The constraints that determine whether the controls can be shown
      *                    or hidden at all.
-     * @param current The desired current state for the controls.  Pass
-     *                {@link BrowserControlsState#BOTH} to preserve the current position.
-     * @param animate Whether the controls should animate to the specified ending condition or
-     *                should jump immediately.
+     * @param current     The desired current state for the controls.  Pass
+     *                    {@link BrowserControlsState#BOTH} to preserve the current position.
+     * @param animate     Whether the controls should animate to the specified ending condition or
+     *                    should jump immediately.
      */
     protected void updateBrowserControlsState(
             @BrowserControlsStateEnum int constraints,
@@ -2661,7 +2793,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
         // renderer.
         if ((constraints == BrowserControlsState.HIDDEN && current == BrowserControlsState.SHOWN)
                 || (constraints == BrowserControlsState.SHOWN
-                           && current == BrowserControlsState.HIDDEN)) {
+                && current == BrowserControlsState.HIDDEN)) {
             return;
         }
         updateBrowserControlsState(getBrowserControlsStateConstraints(), current, animate);
@@ -2693,7 +2825,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return The current visibility constraints for the display of browser controls.
-     *         {@link BrowserControlsState} defines the valid return options.
+     * {@link BrowserControlsState} defines the valid return options.
      */
     @BrowserControlsStateEnum
     public int getBrowserControlsStateConstraints() {
@@ -2782,7 +2914,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return The ID of the bookmark associated with the current URL, or
-     *         {@link #INVALID_BOOKMARK_ID} if no such bookmark exists.
+     * {@link #INVALID_BOOKMARK_ID} if no such bookmark exists.
      */
     public long getBookmarkId() {
         return isFrozen() ? INVALID_BOOKMARK_ID : nativeGetBookmarkId(mNativeTabAndroid, false);
@@ -2838,7 +2970,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     @CalledByNative
     protected void openNewTab(String url, String extraHeaders, ResourceRequestBody postData,
-            int disposition, boolean hasParent, boolean isRendererInitiated) {
+                              int disposition, boolean hasParent, boolean isRendererInitiated) {
         if (isClosing()) return;
 
         boolean incognito = isIncognito();
@@ -3011,8 +3143,8 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      * complete the second level initialization.
      */
     public static Tab createTabForLazyLoad(ChromeActivity activity, boolean incognito,
-            WindowAndroid nativeWindow, TabLaunchType type, int parentId,
-            LoadUrlParams loadUrlParams) {
+                                           WindowAndroid nativeWindow, TabLaunchType type, int parentId,
+                                           LoadUrlParams loadUrlParams) {
         Tab tab = new Tab(
                 INVALID_TAB_ID, parentId, incognito, activity, nativeWindow, type,
                 TabCreationState.FROZEN_FOR_LAZY_LOAD, null);
@@ -3023,10 +3155,11 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     /**
      * Creates a fresh tab. initialize() needs to be called afterwards to complete the second level
      * initialization.
+     *
      * @param initiallyHidden true iff the tab being created is initially in background
      */
     public static Tab createLiveTab(int id, ChromeActivity activity, boolean incognito,
-            WindowAndroid nativeWindow, TabLaunchType type, int parentId, boolean initiallyHidden) {
+                                    WindowAndroid nativeWindow, TabLaunchType type, int parentId, boolean initiallyHidden) {
         return new Tab(id, parentId, incognito, activity, nativeWindow, type, initiallyHidden
                 ? TabCreationState.LIVE_IN_BACKGROUND
                 : TabCreationState.LIVE_IN_FOREGROUND, null);
@@ -3049,7 +3182,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
 
     /**
      * @return Intent that tells Chrome to bring an Activity for a particular Tab back to the
-     *         foreground, or null if this isn't possible.
+     * foreground, or null if this isn't possible.
      */
     @Nullable
     public static Intent createBringTabToFrontIntent(int tabId) {
@@ -3149,34 +3282,53 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
     }
 
     private native void nativeInit();
+
     private native void nativeDestroy(long nativeTabAndroid);
+
     private native void nativeInitWebContents(long nativeTabAndroid, boolean incognito,
-            WebContents webContents, TabWebContentsDelegateAndroid delegate,
-            ContextMenuPopulator contextMenuPopulator);
+                                              WebContents webContents, TabWebContentsDelegateAndroid delegate,
+                                              ContextMenuPopulator contextMenuPopulator);
+
     private native BlimpContents nativeInitBlimpContents(
             long nativeTabAndroid, Profile profile, long windowAndroidPtr);
+
     private native void nativeUpdateDelegates(long nativeTabAndroid,
-            TabWebContentsDelegateAndroid delegate, ContextMenuPopulator contextMenuPopulator);
+                                              TabWebContentsDelegateAndroid delegate, ContextMenuPopulator contextMenuPopulator);
+
     private native void nativeDestroyWebContents(long nativeTabAndroid, boolean deleteNative);
+
     private native Profile nativeGetProfileAndroid(long nativeTabAndroid);
+
     private native int nativeLoadUrl(long nativeTabAndroid, String url, String extraHeaders,
-            ResourceRequestBody postData, int transition, String referrerUrl, int referrerPolicy,
-            boolean isRendererInitiated, boolean shoulReplaceCurrentEntry,
-            long intentReceivedTimestamp, boolean hasUserGesture);
+                                     ResourceRequestBody postData, int transition, String referrerUrl, int referrerPolicy,
+                                     boolean isRendererInitiated, boolean shoulReplaceCurrentEntry,
+                                     long intentReceivedTimestamp, boolean hasUserGesture);
+
     private native void nativeSetActiveNavigationEntryTitleForUrl(long nativeTabAndroid, String url,
-            String title);
+                                                                  String title);
+
     private native boolean nativePrint(long nativeTabAndroid);
+
     private native Bitmap nativeGetFavicon(long nativeTabAndroid);
+
     private native void nativeCreateHistoricalTab(long nativeTabAndroid);
+
     private native void nativeUpdateBrowserControlsState(
             long nativeTabAndroid, int constraints, int current, boolean animate);
+
     private native void nativeLoadOriginalImage(long nativeTabAndroid);
+
     private native long nativeGetBookmarkId(long nativeTabAndroid, boolean onlyEditable);
+
     private native boolean nativeIsOfflinePage(long nativeTabAndroid);
+
     private native OfflinePageItem nativeGetOfflinePage(long nativeTabAndroid);
+
     private native void nativeSetInterceptNavigationDelegate(long nativeTabAndroid,
-            InterceptNavigationDelegate delegate);
+                                                             InterceptNavigationDelegate delegate);
+
     private native void nativeAttachToTabContentManager(long nativeTabAndroid,
-            TabContentManager tabContentManager);
+                                                        TabContentManager tabContentManager);
+
     private native boolean nativeHasPrerenderedUrl(long nativeTabAndroid, String url);
 }

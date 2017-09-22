@@ -64,4 +64,10 @@ dependencies {
     compile project(':libraries_res:chrome_res')
     compile project(':libraries_res:ui_res')
     compile project(':libraries_res:content_res')
+
+    //for HAT
+//    compile 'com.google.guava:guava:23.0-android'
+//    compile 'com.google.guava:guava:23.0'
+    compile 'com.google.code.gson:gson:2.8.1'
+
 }

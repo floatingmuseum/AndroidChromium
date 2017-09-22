@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.tabmodel;
 
 import android.content.Intent;
 import android.text.TextUtils;
+import android.util.Log;
 
 import org.chromium.base.SysUtils;
 import org.chromium.base.TraceEvent;
@@ -93,6 +94,8 @@ public class ChromeTabCreator extends TabCreatorManager.TabCreator {
      */
     private Tab createNewTab(LoadUrlParams loadUrlParams, TabModel.TabLaunchType type,
             Tab parent, int position, Intent intent) {
+        Log.d("HAT测试", "加载NewTab:createNewTab");
+
         try {
             TraceEvent.begin("ChromeTabCreator.createNewTab");
             int parentId = parent != null ? parent.getId() : Tab.INVALID_TAB_ID;
@@ -167,6 +170,8 @@ public class ChromeTabCreator extends TabCreatorManager.TabCreator {
     @Override
     public boolean createTabWithWebContents(Tab parent, WebContents webContents, int parentId,
             TabLaunchType type, String url) {
+        Log.d("HAT测试", "加载NewTab:createTabWithWebContents");
+
         // The parent tab was already closed.  Do not open child tabs.
         if (mTabModel.isClosurePending(parentId)) return false;
 
@@ -276,6 +281,8 @@ public class ChromeTabCreator extends TabCreatorManager.TabCreator {
 
     @Override
     public Tab createFrozenTab(TabState state, int id, int index) {
+        Log.d("HAT测试", "加载NewTab:createFrozenTab");
+
         Tab tab = Tab.createFrozenTabFromState(
                 id, mActivity, state.isIncognito(), mNativeWindow, state.parentId, state);
         boolean selectTab = mOrderController.willOpenInForeground(TabLaunchType.FROM_RESTORE,
