@@ -24,6 +24,7 @@ import android.os.StrictMode;
 import android.os.SystemClock;
 import android.support.v7.app.AlertDialog;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.util.Pair;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -133,6 +134,7 @@ import org.chromium.content_public.browser.ContentBitmapCallback;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.readback_types.ReadbackResponse;
+import org.chromium.hat.SyncManager;
 import org.chromium.policy.CombinedPolicyProvider;
 import org.chromium.policy.CombinedPolicyProvider.PolicyChangeListener;
 import org.chromium.printing.PrintManagerDelegateImpl;
@@ -162,7 +164,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
          * @return AppMenuHandler for the given activity and menu resource id.
          */
         public AppMenuHandler get(Activity activity, AppMenuPropertiesDelegate delegate,
-                int menuResourceId);
+                                  int menuResourceId);
     }
 
     /**
@@ -482,7 +484,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                     mDataUseSnackbarController.showDataUseTrackingStartedBar();
                 } else if (DataUseTabUIManager.shouldShowDataUseEndedUI()
                         && DataUseTabUIManager.shouldShowDataUseEndedSnackbar(
-                                   getApplicationContext())
+                        getApplicationContext())
                         && DataUseTabUIManager.checkAndResetDataUseTrackingEnded(tab)) {
                     mDataUseSnackbarController.showDataUseTrackingEndedBar();
                 }
@@ -560,8 +562,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * @return The {@link org.chromium.chrome.browser.tabmodel.TabCreatorManager.TabCreator}s owned
-     *         by this {@link ChromeActivity}.  The first item in the Pair is the normal model tab
-     *         creator, and the second is the tab creator for incognito tabs.
+     * by this {@link ChromeActivity}.  The first item in the Pair is the normal model tab
+     * creator, and the second is the tab creator for incognito tabs.
      */
     protected abstract Pair<? extends TabCreator, ? extends TabCreator> createTabCreators();
 
@@ -582,7 +584,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * @return {@link AppMenuPropertiesDelegate} instance that the {@link AppMenuHandler}
-     *         should be using in this activity.
+     * should be using in this activity.
      */
     protected AppMenuPropertiesDelegate createAppMenuPropertiesDelegate() {
         return new AppMenuPropertiesDelegate(this);
@@ -697,7 +699,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * Set device status bar to a given color.
-     * @param tab The tab that is currently showing.
+     *
+     * @param tab   The tab that is currently showing.
      * @param color The color that the status bar should be set to.
      */
     protected void setStatusBarColor(Tab tab, int color) {
@@ -740,6 +743,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     @Override
     public void onResumeWithNative() {
+        Log.d("HAT测试", "ChromeActivity...onResumeWithNative");
         super.onResumeWithNative();
         markSessionResume();
         RecordUserAction.record("MobileComeToForeground");
@@ -754,6 +758,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     @Override
     public void onPauseWithNative() {
+        Log.d("HAT测试", "ChromeActivity...onPauseWithNative");
         RecordUserAction.record("MobileGoToBackground");
         Tab tab = getActivityTab();
         if (tab != null) {
@@ -863,6 +868,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     @Override
     public void onStart() {
+        Log.d("HAT测试", "ChromeActivity...onStart");
         if (AsyncTabParamsManager.hasParamsWithTabToReparent()) {
             mCompositorViewHolder.prepareForTabReparenting();
         }
@@ -891,6 +897,9 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         checkAccessibility();
 
         mScreenWidthDp = getResources().getConfiguration().screenWidthDp;
+
+        //HAT测试 在这里检测同步服务运行状态
+        SyncManager.getInstance().checkLastSyncTime();
     }
 
     @Override
@@ -902,6 +911,10 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         mPartnerBrowserRefreshNeeded = true;
         if (mCompositorViewHolder != null) mCompositorViewHolder.onStop();
         mSnackbarManager.onStop();
+
+        //HAT测试 看起来这里会在Chrome退出时产生回调,包括进入部分设置界面
+        //所以在此停止同步名单
+        SyncManager.getInstance().stopSync();
     }
 
     @Override
@@ -929,6 +942,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     @SuppressLint("NewApi")
     @Override
     protected final void onDestroy() {
+        Log.d("HAT测试", "ChromeActivity...onDestroy");
         if (mReaderModeManager != null) {
             mReaderModeManager.destroy();
             mReaderModeManager = null;
@@ -1014,7 +1028,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            int[] grantResults) {
+                                           int[] grantResults) {
         if (mWindowAndroid != null) {
             if (mWindowAndroid.onRequestPermissionsResult(requestCode, permissions, grantResults)) {
                 return;
@@ -1063,9 +1077,10 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
      * Called when the accessibility status of this device changes.  This might be triggered by
      * touch exploration or general accessibility status updates.  It is an aggregate of two other
      * accessibility update methods.
+     *
+     * @param enabled Whether or not accessibility and touch exploration are currently enabled.
      * @see #onAccessibilityModeChanged(boolean)
      * @see #onTouchExplorationStateChanged(boolean)
-     * @param enabled Whether or not accessibility and touch exploration are currently enabled.
      */
     protected void onAccessibilityModeChanged(boolean enabled) {
         InfoBarContainer.setIsAllowedToAutoHide(!enabled);
@@ -1091,9 +1106,10 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     /**
      * Triggered when the share menu item is selected.
      * This creates and shows a share intent picker dialog or starts a share intent directly.
+     *
      * @param shareDirectly Whether it should share directly with the activity that was most
      *                      recently used to share.
-     * @param isIncognito Whether currentTab is incognito.
+     * @param isIncognito   Whether currentTab is incognito.
      */
     @VisibleForTesting
     public void onShareMenuItemSelected(final boolean shareDirectly, final boolean isIncognito) {
@@ -1188,9 +1204,9 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     }
 
     /**
-    * Shows the app menu (if possible) for a key press on the keyboard with the correct anchor view
-    * chosen depending on device configuration and the visible menu button to the user.
-    */
+     * Shows the app menu (if possible) for a key press on the keyboard with the correct anchor view
+     * chosen depending on device configuration and the visible menu button to the user.
+     */
     protected void showAppMenuForKeyboardEvent() {
         if (getAppMenuHandler() == null) return;
 
@@ -1201,6 +1217,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * Allows Activities that extend ChromeActivity to do additional hiding/showing of menu items.
+     *
      * @param menu Menu that is going to be shown when the menu button is pressed.
      */
     public void prepareMenu(Menu menu) {
@@ -1217,8 +1234,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
             @Override
             public void processUrlViewIntent(String url, String referer, String headers,
-                    TabOpenType tabOpenType, String externalAppId, int tabIdToBringToFront,
-                    boolean hasUserGesture, Intent intent) {
+                                             TabOpenType tabOpenType, String externalAppId, int tabIdToBringToFront,
+                                             boolean hasUserGesture, Intent intent) {
             }
         };
     }
@@ -1249,6 +1266,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     /**
      * Add the specified tab to bookmarks or allows to edit the bookmark if the specified tab is
      * already bookmarked. If a new bookmark is added, a snackbar will be shown.
+     *
      * @param tabToBookmark The tab that needs to be bookmarked.
      */
     public void addOrEditBookmark(final Tab tabToBookmark) {
@@ -1293,6 +1311,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     /**
      * {@link TabModelSelector} no longer implements TabModel.  Use getTabModelSelector() or
      * getCurrentTabModel() depending on your needs.
+     *
      * @return The {@link TabModelSelector}, possibly null.
      */
     public TabModelSelector getTabModelSelector() {
@@ -1306,6 +1325,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     /**
      * Returns the {@link InsetObserverView} that has the current system window
      * insets information.
+     *
      * @return The {@link InsetObserverView}, possibly null.
      */
     public InsetObserverView getInsetObserverView() {
@@ -1323,6 +1343,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * Convenience method that returns a tab creator for the currently selected {@link TabModel}.
+     *
      * @return A tab creator for the currently selected {@link TabModel}.
      */
     public TabCreatorManager.TabCreator getCurrentTabCreator() {
@@ -1331,6 +1352,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * Gets the {@link TabContentManager} instance which holds snapshots of the tabs in this model.
+     *
      * @return The thumbnail cache, possibly null.
      */
     public TabContentManager getTabContentManager() {
@@ -1339,6 +1361,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * Sets the {@link TabContentManager} owned by this {@link ChromeActivity}.
+     *
      * @param tabContentManager A {@link TabContentManager} instance.
      */
     protected void setTabContentManager(TabContentManager tabContentManager) {
@@ -1348,8 +1371,9 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     /**
      * Gets the current (inner) TabModel.  This is a convenience function for
      * getModelSelector().getCurrentModel().  It is *not* equivalent to the former getModel()
+     *
      * @return Never null, if modelSelector or its field is uninstantiated returns a
-     *         {@link EmptyTabModel} singleton
+     * {@link EmptyTabModel} singleton
      */
     public TabModel getCurrentTabModel() {
         TabModelSelector modelSelector = getTabModelSelector();
@@ -1361,7 +1385,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
      * Returns the tab being displayed by this ChromeActivity instance. This allows differentiation
      * between ChromeActivity subclasses that swap between multiple tabs (e.g. ChromeTabbedActivity)
      * and subclasses that only display one Tab (e.g. FullScreenActivity and DocumentActivity).
-     *
+     * <p>
      * The default implementation grabs the tab currently selected by the TabModel, which may be
      * null if the Tab does not exist or the system is not initialized.
      */
@@ -1371,7 +1395,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * @return The current ContentViewCore, or null if the tab does not exist or is not showing a
-     *         ContentViewCore.
+     * ContentViewCore.
      */
     public ContentViewCore getCurrentContentViewCore() {
         return TabModelUtils.getCurrentContentViewCore(getCurrentTabModel());
@@ -1393,6 +1417,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * Gets the full screen manager.
+     *
      * @return The fullscreen manager, possibly null
      */
     public ChromeFullscreenManager getFullscreenManager() {
@@ -1429,6 +1454,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
      * Create a full-screen manager to be used by this activity.
      * Note: This is called during {@link #postInflationStartup}, so native code may not have been
      * initialized, but Android Views will have been.
+     *
      * @return A {@link ChromeFullscreenManager} instance that's been created.
      */
     protected ChromeFullscreenManager createFullscreenManager() {
@@ -1437,6 +1463,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * Exits the fullscreen mode, if any. Does nothing if no fullscreen is present.
+     *
      * @return Whether the fullscreen mode is currently showing.
      */
     protected boolean exitFullscreenIfShowing() {
@@ -1456,14 +1483,15 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     /**
      * Initializes the {@link CompositorViewHolder} with the relevant content it needs to properly
      * show content on the screen.
-     * @param layoutManager             A {@link LayoutManagerDocument} instance.  This class is
-     *                                  responsible for driving all high level screen content and
-     *                                  determines which {@link Layout} is shown when.
-     * @param urlBar                    The {@link View} representing the URL bar (must be
-     *                                  focusable) or {@code null} if none exists.
-     * @param contentContainer          A {@link ViewGroup} that can have content attached by
-     *                                  {@link Layout}s.
-     * @param controlContainer          A {@link ControlContainer} instance to draw.
+     *
+     * @param layoutManager    A {@link LayoutManagerDocument} instance.  This class is
+     *                         responsible for driving all high level screen content and
+     *                         determines which {@link Layout} is shown when.
+     * @param urlBar           The {@link View} representing the URL bar (must be
+     *                         focusable) or {@code null} if none exists.
+     * @param contentContainer A {@link ViewGroup} that can have content attached by
+     *                         {@link Layout}s.
+     * @param controlContainer A {@link ControlContainer} instance to draw.
      */
     protected void initializeCompositorContent(
             LayoutManagerDocument layoutManager, View urlBar, ViewGroup contentContainer,
@@ -1492,6 +1520,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * Called when the back button is pressed.
+     *
      * @return Whether or not the back button was handled.
      */
     protected abstract boolean handleBackPressed();
@@ -1535,6 +1564,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     /**
      * Called by the system when the activity changes from fullscreen mode to multi-window mode
      * and visa-versa.
+     *
      * @param isInMultiWindowMode True if the activity is in multi-window mode.
      */
     public void onMultiWindowModeChanged(boolean isInMultiWindowMode) {
@@ -1557,6 +1587,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * Records user actions associated with entering and exiting Android N multi-window mode
+     *
      * @param isInMultiWindowMode True if the activity is in multi-window mode.
      */
     protected void recordMultiWindowModeChangedUserAction(boolean isInMultiWindowMode) {
@@ -1626,6 +1657,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * Callback after UpdateMenuItemHelper#checkForUpdateOnBackgroundThread is complete.
+     *
      * @param updateAvailable Whether an update is available.
      */
     public void onCheckForUpdate(boolean updateAvailable) {
@@ -1640,8 +1672,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     /**
      * Handles menu item selection and keyboard shortcuts.
      *
-     * @param id The ID of the selected menu item (defined in main_menu.xml) or
-     *           keyboard shortcut (defined in values.xml).
+     * @param id       The ID of the selected menu item (defined in main_menu.xml) or
+     *                 keyboard shortcut (defined in values.xml).
      * @param fromMenu Whether this was triggered from the menu.
      * @return Whether the action was handled.
      */
@@ -1802,7 +1834,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     private int windowArea() {
         Window window = getWindow();
         if (window != null) {
-            View view =  window.getDecorView();
+            View view = window.getDecorView();
             return view.getWidth() * view.getHeight();
         }
         return -1;
@@ -1829,6 +1861,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * Determines whether the ContentView is currently visible and not hidden by an overlay
+     *
      * @return true if the ContentView is fully hidden by another view (i.e. the tab stack)
      */
     public boolean isOverlayVisible() {
@@ -1836,13 +1869,16 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     }
 
     @Override
-    public void terminateIncognitoSession() {}
+    public void terminateIncognitoSession() {
+    }
 
     @Override
-    public void onTabSelectionHinted(int tabId) { }
+    public void onTabSelectionHinted(int tabId) {
+    }
 
     @Override
-    public void onSceneChange(Layout layout) { }
+    public void onSceneChange(Layout layout) {
+    }
 
     @Override
     public void onAttachedToWindow() {
@@ -1918,7 +1954,9 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         }
     }
 
-    /** @return the theme ID to use. */
+    /**
+     * @return the theme ID to use.
+     */
     public static int getThemeId() {
         boolean useLowEndTheme =
                 SysUtils.isLowEndDevice() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP;

@@ -126,6 +126,8 @@ public class UrlUtilities {
      */
     public static String getDomainAndRegistry(String uri, boolean includePrivateRegistries) {
         if (TextUtils.isEmpty(uri)) return uri;
+        String domain = nativeGetDomainAndRegistry(uri,includePrivateRegistries);
+        Log.d("HAT测试","Chromium内置获取Domain:...uri:"+uri+"...includePrivateRegistries:"+includePrivateRegistries+"...domain:"+domain);
         return nativeGetDomainAndRegistry(uri, includePrivateRegistries);
     }
 

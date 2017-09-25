@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser.media.router;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Handler;
@@ -46,6 +47,7 @@ public class MediaRouteChooserDialogManager extends BaseMediaRouteDialogManager 
             });
         }
 
+        @SuppressLint("ValidFragment")
         public Fragment(BaseMediaRouteDialogManager manager) {
             mManager = manager;
         }

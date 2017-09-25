@@ -757,37 +757,26 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      */
     public int loadUrl(LoadUrlParams params) {
 //        chrome-native://newtab/
-        Log.d("HAT测试", "加载URL...getBaseUrl:" + params.getBaseUrl());
-        Log.d("HAT测试", "加载URL...getDataUrlAsString:" + params.getDataUrlAsString());
-        Log.d("HAT测试", "加载URL...getExtraHeadersString:" + params.getExtraHeadersString());
-        Log.d("HAT测试", "加载URL...getExtraHeaders:" + params.getExtraHeaders());
-        Log.d("HAT测试", "加载URL...getExtraHttpRequestHeadersString:" + params.getExtraHttpRequestHeadersString());
-        Log.d("HAT测试", "加载URL...getUrl:" + params.getUrl());
-        Log.d("HAT测试", "加载URL...getVerbatimHeaders:" + params.getVerbatimHeaders());
-        Log.d("HAT测试", "加载URL...getVirtualUrlForDataUrl:" + params.getVirtualUrlForDataUrl());
-        Log.d("HAT测试", "加载URL...getCanLoadLocalResources:" + params.getCanLoadLocalResources());
-        Log.d("HAT测试", "加载URL...getHasUserGesture:" + params.getHasUserGesture());
-        Log.d("HAT测试", "加载URL...getIntentReceivedTimestamp:" + params.getIntentReceivedTimestamp());
-        Log.d("HAT测试", "加载URL...getIsRendererInitiated:" + params.getIsRendererInitiated());
-        Log.d("HAT测试", "加载URL...getLoadUrlType:" + params.getLoadUrlType());
-        Log.d("HAT测试", "加载URL...getPostData:" + params.getPostData());
-        Log.d("HAT测试", "加载URL...getReferrer:" + params.getReferrer());
-        Log.d("HAT测试", "加载URL...getShouldReplaceCurrentEntry:" + params.getShouldReplaceCurrentEntry());
-        Log.d("HAT测试", "加载URL...getTransitionType:" + params.getTransitionType());
-        Log.d("HAT测试", "加载URL...getUserAgentOverrideOption:" + params.getUserAgentOverrideOption());
-        Log.d("HAT测试", "加载URL...isBaseUrlDataScheme:" + params.isBaseUrlDataScheme());
-//        try {
-//            Log.d("HAT测试", "加载URL...域名Domain:" + domain);
-//        } catch (URISyntaxException e) {
-//            e.printStackTrace();
-//        }
+//        Log.d("HAT测试", "加载URL...getBaseUrl:" + params.getBaseUrl());
+//        Log.d("HAT测试", "加载URL...getDataUrlAsString:" + params.getDataUrlAsString());
+//        Log.d("HAT测试", "加载URL...getExtraHeadersString:" + params.getExtraHeadersString());
+//        Log.d("HAT测试", "加载URL...getExtraHeaders:" + params.getExtraHeaders());
+//        Log.d("HAT测试", "加载URL...getExtraHttpRequestHeadersString:" + params.getExtraHttpRequestHeadersString());
+//        Log.d("HAT测试", "加载URL...getUrl:" + params.getUrl());
+//        Log.d("HAT测试", "加载URL...getVerbatimHeaders:" + params.getVerbatimHeaders());
+//        Log.d("HAT测试", "加载URL...getVirtualUrlForDataUrl:" + params.getVirtualUrlForDataUrl());
+//        Log.d("HAT测试", "加载URL...getCanLoadLocalResources:" + params.getCanLoadLocalResources());
+//        Log.d("HAT测试", "加载URL...getHasUserGesture:" + params.getHasUserGesture());
+//        Log.d("HAT测试", "加载URL...getIntentReceivedTimestamp:" + params.getIntentReceivedTimestamp());
+//        Log.d("HAT测试", "加载URL...getIsRendererInitiated:" + params.getIsRendererInitiated());
+//        Log.d("HAT测试", "加载URL...getLoadUrlType:" + params.getLoadUrlType());
+//        Log.d("HAT测试", "加载URL...getPostData:" + params.getPostData());
+//        Log.d("HAT测试", "加载URL...getReferrer:" + params.getReferrer());
+//        Log.d("HAT测试", "加载URL...getShouldReplaceCurrentEntry:" + params.getShouldReplaceCurrentEntry());
+//        Log.d("HAT测试", "加载URL...getTransitionType:" + params.getTransitionType());
+//        Log.d("HAT测试", "加载URL...getUserAgentOverrideOption:" + params.getUserAgentOverrideOption());
+//        Log.d("HAT测试", "加载URL...isBaseUrlDataScheme:" + params.isBaseUrlDataScheme());
 
-
-        Log.d("HAT测试", "加载URL...**************************************************************** 分割线 *********************************************");
-
-//        if (WhiteListManager.getInstance().checkUrl(params.getUrl())) {
-//
-//        }
 
         try {
             TraceEvent.begin("Tab.loadUrl");
@@ -1736,8 +1725,6 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
         for (TabObserver observer : mObservers) observer.onLoadStopped(this, toDifferentDocument);
     }
 
-    int num = 0;
-
     /**
      * Called when a page has started loading.
      *
@@ -1746,13 +1733,10 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      */
     protected void didStartPageLoad(String validatedUrl, boolean showingErrorPage) {
         Log.d("HAT测试", "加载URL...didStartPageLoad:" + validatedUrl);
-
+        WhiteListManager.getInstance().checkUrl(validatedUrl);
         // TODO: 2017/9/22 这里似乎是一个完美的拦截地点
-        Log.d("HAT测试", "加载URL...didStartPageLoad...制造崩溃前num：" + num + "..." + (num / 3)+"...URL:"+mUrl+"..."+ getUrl());
-        if (num/3 == 1) {
-            Log.d("HAT测试", "加载URL...didStartPageLoad...制造崩溃");
-//            showSadTab();//无效
-//            hide();//无效
+        if (WhiteListManager.getInstance().checkUrl(validatedUrl)) {
+            Log.d("HAT测试", "加载URL...didStartPageLoad...非法网址:" + validatedUrl);
             stopLoading();
             return;
         }

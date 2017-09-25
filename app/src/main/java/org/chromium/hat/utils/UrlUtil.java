@@ -1,5 +1,13 @@
 package org.chromium.hat.utils;
 
+
+import org.chromium.chrome.browser.util.UrlUtilities;
+import org.chromium.hat.WhiteListManager;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -64,5 +72,48 @@ public class UrlUtil {
         Matcher mat = pat.matcher(ipAddress);
 
         return mat.find();
+    }
+
+    public static String getDomain(String url) throws Exception {
+        url = UrlUtil.isStartWithHttp(url);
+        URL uri;
+        String host;
+        try {
+            uri = new URL(url);
+            host = uri.getHost();
+        } catch (MalformedURLException e) {
+            host = null;
+            e.printStackTrace();
+        }
+
+        if (host == null) {
+            return null;
+        }
+
+        if (isIpAddress(host)) {
+            return host;
+        }
+//        Logger.d("GUAVA...host:"+ host+"..."+url);
+        return UrlUtilities.getDomainAndRegistry(host, false);
+//        return InternetDomainName.from(host).topPrivateDomain().toString();
+    }
+
+    public static List<String> getRootDomains(List<String> urls) {
+        List<String> rootDomains = new ArrayList<>();
+        if (!ListUtil.hasData(urls)) {
+            return rootDomains;
+        }
+        for (String url : urls) {
+            //根域名获取失败后不添加到集合中，并且继续获取后面的根域名
+            String domain;
+            try {
+                domain = UrlUtil.getDomain(url);
+            } catch (Exception e) {
+                e.printStackTrace();
+                continue;
+            }
+            rootDomains.add(domain);
+        }
+        return rootDomains;
     }
 }
