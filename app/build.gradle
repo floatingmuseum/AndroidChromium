@@ -12,6 +12,7 @@ android {
     defaultConfig {
         applicationId "org.chromium.chrome.browser"
         minSdkVersion 19
+//        minSdkVersion 17
         targetSdkVersion 25
         versionCode 1
         versionName "1.0"
@@ -67,7 +68,7 @@ dependencies {
 
     //for HAT
 //    compile 'com.google.guava:guava:23.0-android'
-//    compile 'com.google.guava:guava:23.0'
+    compile 'com.google.guava:guava:20.0'
     compile 'com.google.code.gson:gson:2.8.1'
     compile 'com.squareup.retrofit2:retrofit:2.1.0'
     compile 'com.squareup.retrofit2:converter-gson:2.1.0'

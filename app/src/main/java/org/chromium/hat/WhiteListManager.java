@@ -55,7 +55,18 @@ public class WhiteListManager {
         return whiteListManager;
     }
 
+    /**
+     *
+     * @param url 被检测的网址
+     * @return true为需要拦截,false为不需要拦截
+     */
     public boolean checkUrl(String url) {
+        /**
+         * 这里和管控中的判断是反过来的,
+         * 管控中是判断url是否合法,
+         * 这里判断url是否非法,
+         * 所有这里的true和false和管控中是相反的.
+         */
         Log.d("HAT测试", "当前网址:" + url + "..." + url.startsWith("chrome"));
 
         //如果未注册则不拦截
@@ -65,7 +76,7 @@ public class WhiteListManager {
 
         //Chrome的内置标签页均以chrome开头,不拦截
         if (!TextUtils.isEmpty(url) && url.startsWith("chrome")) {
-            return true;
+            return false;
         }
 
         String domain = null;
@@ -78,7 +89,7 @@ public class WhiteListManager {
         //默认主页
         if (PREDEFINED_WHITE_DOMAIN1.equalsIgnoreCase(domain) || PREDEFINED_WHITE_DOMAIN2.equals(domain)) {
             Log.d(TAG, "白名单判断:预置Domain:" + domain);
-            return true;
+            return false;
         }
 
         if (listInfo == null) {
@@ -113,41 +124,19 @@ public class WhiteListManager {
         if (isUse == OPENING_HOURS) {
             if (isContainDomain(listInfo.getSbl(), domain) || isContainDomain(listInfo.getAbl(), domain)) {
                 Log.d(TAG, "WhiteListManager:开放上网时段,黑名单中网站禁止访问:" + domain);
-                return false;
+                return true;
             }
             Log.d(TAG, "WhiteListManager:开放上网时段" + domain);
-            return true;
+            return false;
         } else {
             if (isContainDomain(listInfo.getSwl(), domain) || isContainDomain(listInfo.getAwl(), domain)) {
                 Log.d(TAG, "WhiteListManager:关闭上网时段，白名单中网站可以访问:" + domain);
-                return true;
+                return false;
             }
             Log.d(TAG, "WhiteListManager:关闭上网时段" + domain);
-            return false;
+            return true;
         }
     }
-
-//    private String getDomain(String url) {
-//        url = UrlUtil.isStartWithHttp(url);
-//        URL uri;
-//        String host;
-//        try {
-//            uri = new URL(url);
-//            host = uri.getHost();
-//        } catch (MalformedURLException e) {
-//            host = null;
-//            e.printStackTrace();
-//        }
-//
-//        if (host == null) {
-//            return null;
-//        }
-//
-//        if (UrlUtil.isIpAddress(host) || UrlUtil.isIpAddressWithPort(host)) {
-//            return host;
-//        }
-//        return InternetDomainName.from(host).topPrivateDomain().toString();
-//    }
 
     private int isInsideOpeningHours() {
         int isUse = listInfo.getIsUse();

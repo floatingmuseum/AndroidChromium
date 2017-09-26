@@ -1733,10 +1733,10 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      */
     protected void didStartPageLoad(String validatedUrl, boolean showingErrorPage) {
         Log.d("HAT测试", "加载URL...didStartPageLoad:" + validatedUrl);
-        WhiteListManager.getInstance().checkUrl(validatedUrl);
         // TODO: 2017/9/22 这里似乎是一个完美的拦截地点
         if (WhiteListManager.getInstance().checkUrl(validatedUrl)) {
             Log.d("HAT测试", "加载URL...didStartPageLoad...非法网址:" + validatedUrl);
+            ToastUtil.show("当前禁止访问:"+validatedUrl);
             stopLoading();
             return;
         }

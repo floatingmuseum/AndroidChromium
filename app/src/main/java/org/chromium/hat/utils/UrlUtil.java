@@ -1,6 +1,8 @@
 package org.chromium.hat.utils;
 
 
+import com.google.common.net.InternetDomainName;
+
 import org.chromium.chrome.browser.util.UrlUtilities;
 import org.chromium.hat.WhiteListManager;
 
@@ -94,8 +96,8 @@ public class UrlUtil {
             return host;
         }
 //        Logger.d("GUAVA...host:"+ host+"..."+url);
-        return UrlUtilities.getDomainAndRegistry(host, false);
-//        return InternetDomainName.from(host).topPrivateDomain().toString();
+//        return UrlUtilities.getDomainAndRegistry(host, false);
+        return InternetDomainName.from(host).topPrivateDomain().toString();
     }
 
     public static List<String> getRootDomains(List<String> urls) {

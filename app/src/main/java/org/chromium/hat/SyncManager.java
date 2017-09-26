@@ -23,7 +23,7 @@ public class SyncManager {
 
     private static final long SYNC_OVERTIME = 60 * 1000;//1分钟 超时时间
     private static final long SYNC_BROWSER_WHITE_LIST_TIME = 3 * 60 * 1000;//3分钟  浏览器黑白名单
-    private static final long SYNC_IS_REGISTRATION = 30 * 60 * 1000;//30分钟 设备是否已注册
+    private static final long SYNC_IS_REGISTRATION = 3 * 60 * 1000;//30分钟 设备是否已注册
     private static final long SYNC_EXPIRE_TIME = 60 * 60 * 1000;//60分钟 过期时间
 
     private static SyncManager manager;
@@ -112,24 +112,24 @@ public class SyncManager {
     /**
      * 同步浏览器黑白名单
      */
-    public void syncBrowserWhiteList() {
-        stopDisposable(syncBrowserWhiteListDisposable);
-        if (WhiteListManager.getInstance().isDeviceRegistered()) {
-            syncBrowserWhiteListDisposable = Flowable.interval(0, SYNC_BROWSER_WHITE_LIST_TIME, TimeUnit.MILLISECONDS)
-                    .onBackpressureDrop()
-                    .subscribe(new Consumer<Long>() {
-                        @Override
-                        public void accept(@NonNull Long aLong) throws Exception {
-                            Repository.getInstance().getBrowserWhiteList();
-                        }
-                    });
-        }
+    private void syncBrowserWhiteList() {
+            stopDisposable(syncBrowserWhiteListDisposable);
+            if (WhiteListManager.getInstance().isDeviceRegistered()) {
+                syncBrowserWhiteListDisposable = Flowable.interval(0, SYNC_BROWSER_WHITE_LIST_TIME, TimeUnit.MILLISECONDS)
+                        .onBackpressureDrop()
+                        .subscribe(new Consumer<Long>() {
+                            @Override
+                            public void accept(@NonNull Long aLong) throws Exception {
+                                Repository.getInstance().getBrowserWhiteList();
+                            }
+                        });
+            }
     }
 
     /**
      * 同步过期时间
      */
-    public void syncIsRegistration() {
+    private void syncIsRegistration() {
         stopDisposable(syncIsRegistrationDisposable);
         syncIsRegistrationDisposable = Flowable.interval(0, SYNC_IS_REGISTRATION, TimeUnit.MILLISECONDS)
                 .onBackpressureDrop()
@@ -151,4 +151,8 @@ public class SyncManager {
             disposable.dispose();
         }
     }
+
+//    private boolean isRunning(Disposable disposable) {
+//        return disposable != null && !disposable.isDisposed();
+//    }
 }
