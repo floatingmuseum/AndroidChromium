@@ -56,9 +56,8 @@ public class WhiteListManager {
     }
 
     /**
-     *
      * @param url 被检测的网址
-     * @return true为需要拦截,false为不需要拦截
+     * @return true为需要拦截, false为不需要拦截
      */
     public boolean checkUrl(String url) {
         /**
@@ -196,7 +195,7 @@ public class WhiteListManager {
 
     public void handleResult(WhiteListInfo result) {
         if (result != null) {
-//            showWhiteList(result);
+            Log.d("HAT测试", "黑白名单:" + result.toString());
             listInfo = result;
             Gson gson = new Gson();
             String jsonResult = gson.toJson(result);
@@ -210,9 +209,16 @@ public class WhiteListManager {
         SPUtil.putBoolean(SP_KEY_DEVICE_REGISTRATION, registered);
 
         if (registered) {
-            isDeviceRegistered = true;
             SPUtil.putString(SP_KEY_REGION_SERVER_HOST, result.getRegion_server_host());
-            SyncManager.getInstance().checkLastSyncTime();
+            if (!isDeviceRegistered) {
+                isDeviceRegistered = true;
+                SyncManager.getInstance().syncBrowserWhiteList();
+                SyncManager.getInstance().stopSync(SyncManager.SYNC_STOP_TYPE_REGISTRATION);
+                SyncManager.getInstance().setRegisteredTime(true);
+                SyncManager.getInstance().syncIsRegistration();
+            }
+        } else {
+            isDeviceRegistered = false;
         }
     }
 }

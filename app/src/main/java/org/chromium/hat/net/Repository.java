@@ -55,7 +55,7 @@ public class Repository {
      */
     public void getBrowserWhiteList() {
         String mac = MacUtil.getMacAddress();
-        Log.d("HAT测试", "获取浏览器黑白名单url:" + HttpUrl.getUrl(HttpUrl.URL_BROWSER_LIST) + "......ServerHost:" + SPUtil.getString("reftionserver", "www.floatingmuseum.com"));
+        Log.d("HAT测试", "获取浏览器黑白名单url:" + HttpUrl.getUrl(HttpUrl.URL_BROWSER_LIST));
         service.getBrowserWhiteList(HttpUrl.getUrl(HttpUrl.URL_BROWSER_LIST), mac)
                 .map(new Function<WhiteListInfo, WhiteListInfo>() {
                     @Override

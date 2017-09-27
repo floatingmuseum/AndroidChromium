@@ -756,6 +756,7 @@ public class Tab implements ViewGroup.OnHierarchyChangeListener,
      * prerendered. DEFAULT_PAGE_LOAD if it had not.
      */
     public int loadUrl(LoadUrlParams params) {
+        Log.d("HAT测试","Tab...loadUrl..."+params.getUrl());
 //        chrome-native://newtab/
 //        Log.d("HAT测试", "加载URL...getBaseUrl:" + params.getBaseUrl());
 //        Log.d("HAT测试", "加载URL...getDataUrlAsString:" + params.getDataUrlAsString());

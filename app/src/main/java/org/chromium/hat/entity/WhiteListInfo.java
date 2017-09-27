@@ -77,4 +77,17 @@ public class WhiteListInfo {
         public String sTime;
         public String eTime;
     }
+
+    @Override
+    public String toString() {
+        return "WhiteListInfo{" +
+                "isUse=" + isUse +
+                ", swl=" + swl +
+                ", awl=" + awl +
+                ", abl=" + abl +
+                ", sbl=" + sbl +
+                ", netTime=" + netTime +
+                ", if_can_download_file=" + if_can_download_file +
+                '}';
+    }
 }

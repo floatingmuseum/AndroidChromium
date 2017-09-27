@@ -914,7 +914,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
         //HAT测试 看起来这里会在Chrome退出时产生回调,包括进入部分设置界面
         //所以在此停止同步名单
-        SyncManager.getInstance().stopSync();
+        SyncManager.getInstance().stopSync(SyncManager.SYNC_STOP_TYPE_ALL);
     }
 
     @Override

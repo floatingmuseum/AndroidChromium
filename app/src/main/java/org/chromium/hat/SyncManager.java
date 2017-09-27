@@ -17,21 +17,40 @@ import io.reactivex.functions.Consumer;
  */
 
 public class SyncManager {
+    public static final int SYNC_STOP_TYPE_ALL = 0;
+    public static final int SYNC_STOP_TYPE_BROWSER_LIST = 1;
+    public static final int SYNC_STOP_TYPE_REGISTRATION = 2;
     public static final String SP_KEY_BROWSER_WHITE_LIST_LAST_TIME = "browserWhiteListLastSyncTime";
     public static final String SP_KEY_EXPIRE_TIME_LAST_TIME = "expireTimeLastSyncTime";
     public static final String SP_KEY_IS_REGISTRATION_LAST_TIME = "isRegistrationLastSyncTime";
 
     private static final long SYNC_OVERTIME = 60 * 1000;//1分钟 超时时间
     private static final long SYNC_BROWSER_WHITE_LIST_TIME = 3 * 60 * 1000;//3分钟  浏览器黑白名单
-    private static final long SYNC_IS_REGISTRATION = 3 * 60 * 1000;//30分钟 设备是否已注册
+    private static final long SYNC_IS_REGISTRATION_SHORT = 3 * 60 * 1000;//3分钟 设备是否已注册
+    private static final long SYNC_IS_REGISTRATION_LONG = 30 * 60 * 1000;//30分钟 设备是否已注册
     private static final long SYNC_EXPIRE_TIME = 60 * 60 * 1000;//60分钟 过期时间
 
     private static SyncManager manager;
     private long lastCheckTime = -1;
     private Disposable syncBrowserWhiteListDisposable;
     private Disposable syncIsRegistrationDisposable;
+    private long defaultRegistrationSyncTime;
 
     private SyncManager() {
+        boolean isRegistered = SPUtil.getBoolean(WhiteListManager.SP_KEY_DEVICE_REGISTRATION, false);
+        setRegisteredTime(isRegistered);
+    }
+
+    /**
+     * 设置注册状态检查的间隔时间
+     * @param isRegistered
+     */
+    public void setRegisteredTime(boolean isRegistered) {
+        if (isRegistered) {
+            defaultRegistrationSyncTime = SYNC_IS_REGISTRATION_LONG;
+        } else {
+            defaultRegistrationSyncTime = SYNC_IS_REGISTRATION_SHORT;
+        }
     }
 
     public static SyncManager getInstance() {
@@ -112,26 +131,26 @@ public class SyncManager {
     /**
      * 同步浏览器黑白名单
      */
-    private void syncBrowserWhiteList() {
-            stopDisposable(syncBrowserWhiteListDisposable);
-            if (WhiteListManager.getInstance().isDeviceRegistered()) {
-                syncBrowserWhiteListDisposable = Flowable.interval(0, SYNC_BROWSER_WHITE_LIST_TIME, TimeUnit.MILLISECONDS)
-                        .onBackpressureDrop()
-                        .subscribe(new Consumer<Long>() {
-                            @Override
-                            public void accept(@NonNull Long aLong) throws Exception {
-                                Repository.getInstance().getBrowserWhiteList();
-                            }
-                        });
-            }
+    public void syncBrowserWhiteList() {
+        stopDisposable(syncBrowserWhiteListDisposable);
+        if (WhiteListManager.getInstance().isDeviceRegistered()) {
+            syncBrowserWhiteListDisposable = Flowable.interval(0, SYNC_BROWSER_WHITE_LIST_TIME, TimeUnit.MILLISECONDS)
+                    .onBackpressureDrop()
+                    .subscribe(new Consumer<Long>() {
+                        @Override
+                        public void accept(@NonNull Long aLong) throws Exception {
+                            Repository.getInstance().getBrowserWhiteList();
+                        }
+                    });
+        }
     }
 
     /**
      * 同步过期时间
      */
-    private void syncIsRegistration() {
+    public void syncIsRegistration() {
         stopDisposable(syncIsRegistrationDisposable);
-        syncIsRegistrationDisposable = Flowable.interval(0, SYNC_IS_REGISTRATION, TimeUnit.MILLISECONDS)
+        syncIsRegistrationDisposable = Flowable.interval(0, defaultRegistrationSyncTime, TimeUnit.MILLISECONDS)
                 .onBackpressureDrop()
                 .subscribe(new Consumer<Long>() {
                     @Override
@@ -141,9 +160,15 @@ public class SyncManager {
                 });
     }
 
-    public void stopSync() {
-        stopDisposable(syncBrowserWhiteListDisposable);
-        stopDisposable(syncIsRegistrationDisposable);
+    public void stopSync(int stopType) {
+        if (stopType == 0) {
+            stopDisposable(syncBrowserWhiteListDisposable);
+            stopDisposable(syncIsRegistrationDisposable);
+        } else if (stopType == 1) {
+            stopDisposable(syncBrowserWhiteListDisposable);
+        } else if (stopType == 2) {
+            stopDisposable(syncIsRegistrationDisposable);
+        }
     }
 
     private void stopDisposable(Disposable disposable) {
